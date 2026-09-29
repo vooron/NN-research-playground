@@ -1,0 +1,1100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Neural Net Playground</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#E9EDF1;--panel:#FFFFFF;--plot:#F8FAFB;--ink:#17202A;--ink2:#48535F;--muted:#78828D;--rule:#D3D9DF;
+  --cA:#E8871E;--cB:#2E6FDB;--bound:#5B3FD1;--pos:#1B998B;--neg:#D1495B;--fold:#5F6B78;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  box-sizing:border-box;color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E1318;--panel:#161D25;--plot:#11181F;--ink:#E5EAF0;--ink2:#AAB5C0;--muted:#7C8793;--rule:#28313B;
+    --cA:#F2A04A;--cB:#5E95F2;--bound:#A590FF;--pos:#3CC4B4;--neg:#F27685;--fold:#98A3AF;color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E1318;--panel:#161D25;--plot:#11181F;--ink:#E5EAF0;--ink2:#AAB5C0;--muted:#7C8793;--rule:#28313B;
+  --cA:#F2A04A;--cB:#5E95F2;--bound:#A590FF;--pos:#3CC4B4;--neg:#F27685;--fold:#98A3AF;color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5}
+.top{max-width:1560px;margin:0 auto;padding:22px 20px 4px}
+.top h1{font-size:24px;line-height:1.2;font-weight:600;letter-spacing:-0.01em;margin:0 0 4px}
+.top p{margin:0;color:var(--ink2);max-width:80ch}
+
+.app{max-width:1560px;margin:0 auto;padding:14px 20px 40px;display:grid;grid-template-columns:340px minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:1280px){.app{grid-template-columns:300px minmax(0,1fr);gap:14px}}
+.build{position:sticky;top:14px;display:flex;flex-direction:column;gap:14px;max-height:calc(100dvh - 28px);overflow:auto;scrollbar-width:thin}
+main{display:flex;flex-direction:column;gap:18px;min-width:0}
+.panel{background:var(--panel);border:1px solid var(--rule);border-radius:14px;padding:14px 16px}
+.ph{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+.ctl{display:flex;flex-direction:column;gap:12px}
+.gl{font-size:13px;color:var(--ink2);font-weight:500;margin:0 0 5px}
+.gl em{font-style:normal;color:var(--muted);font-weight:400}
+.seg{display:flex;border:1px solid var(--rule);border-radius:8px;overflow:hidden}
+.seg button{flex:1;border:0;background:transparent;color:var(--ink);font:inherit;font-size:13px;padding:6px 4px;cursor:pointer;min-width:0}
+.seg button+button{border-left:1px solid var(--rule)}
+.seg button:hover{background:var(--plot)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--panel)}
+button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--bound);outline-offset:2px}
+
+#net{width:100%;height:auto;display:block}
+#sel{font-size:13px;color:var(--ink2);margin:8px 0 0}
+#sel b{font-weight:600}
+.cap{font-size:12.5px;color:var(--muted);margin:8px 0 0;line-height:1.45}
+
+.trainbar{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.btn{font:inherit;font-size:14px;padding:8px 12px;border-radius:8px;border:1px solid var(--rule);background:var(--panel);color:var(--ink);cursor:pointer;white-space:nowrap}
+.btn:hover{background:var(--plot)}
+.btn.primary{background:var(--bound);border-color:var(--bound);color:#fff;font-weight:500;min-width:96px}
+.stats{display:flex;gap:20px}
+.st span{display:block;font-size:12px;color:var(--muted)}
+.st b{display:block;font-family:var(--mono);font-weight:500;font-size:18px;line-height:1.2}
+.sparkw{flex:1;min-width:140px}
+#spark{width:100%;height:40px;display:block}
+.opts{flex-basis:100%;border-top:1px solid var(--rule);padding-top:10px;display:flex;flex-wrap:wrap;gap:10px 24px;align-items:center}
+.opts[hidden]{display:none}
+.row{display:flex;align-items:center;gap:10px;font-size:13.5px;color:var(--ink2)}
+.row input[type=range]{width:140px;accent-color:var(--bound)}
+.num{font-family:var(--mono);font-size:13px}
+.check{display:flex;gap:7px;align-items:center;font-size:13.5px;color:var(--ink2);cursor:pointer}
+.check input{accent-color:var(--bound)}
+
+.tabs{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:-4px}
+.tab{font:inherit;font-size:14px;padding:7px 14px;border-radius:999px;border:1px solid var(--rule);background:var(--panel);color:var(--ink2);cursor:pointer}
+.tab:hover{color:var(--ink)}
+.tab[aria-selected="true"]{background:var(--ink);border-color:var(--ink);color:var(--panel)}
+.tab small{opacity:.7;margin-left:4px}
+.tab-net{color:var(--bound);border-color:var(--bound)}
+.tab-net[aria-selected="true"]{background:var(--bound);border-color:var(--bound);color:#fff}
+.vsep{width:1px;align-self:stretch;background:var(--rule);margin:4px 6px}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--ink2)}
+.btn.ghost:hover,.btn.ghost[aria-expanded="true"]{background:var(--plot);color:var(--ink)}
+/* Before | After | Editor side by side when there is room; the editor drops below otherwise. */
+.stage{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-items:start}
+@media (min-width:640px){.stage{grid-template-columns:repeat(2,minmax(0,1fr))}.stage>.edcard{grid-column:1/-1}}
+@media (min-width:1280px){.stage{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(300px,.95fr)}.stage>.edcard{grid-column:auto}}
+.card h2 .tag{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-right:6px}
+.eqbody{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:4px 18px;align-items:start}
+#stage canvas.cv{cursor:grab;touch-action:none}
+#stage canvas.cvIn,.maps canvas{cursor:crosshair;touch-action:none}
+#stage canvas.dragging{cursor:grabbing}
+.vreset{position:absolute;top:8px;right:8px;font:inherit;font-size:12px;padding:3px 9px;border-radius:6px;border:1px solid var(--rule);background:var(--panel);color:var(--ink2);cursor:pointer}
+.vreset:hover{color:var(--ink)}
+.cvwrap{position:relative}
+.strip{width:100%;aspect-ratio:2.4;display:block;border-radius:8px;background:var(--plot)}
+.striph{font-size:14px;font-weight:600;margin:14px 4px 8px}
+.striph small{font-weight:400;color:var(--muted);font-family:var(--mono);font-size:12px;margin-left:6px}
+.ov{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.card{background:var(--panel);border:1px solid var(--rule);border-radius:14px;padding:12px;min-width:0}
+.card h2{font-size:15px;font-weight:600;margin:2px 4px 8px}
+.card h2 small{font-weight:400;color:var(--muted);font-size:13px}
+canvas.cv{width:100%;aspect-ratio:1;display:block;border-radius:8px;background:var(--plot)}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12.5px;color:var(--ink2);margin:8px 4px 0}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+.maps{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.maps figure{margin:0}
+.maps canvas{width:100%;aspect-ratio:1;display:block;border-radius:6px;background:var(--plot)}
+.maps canvas.ov{background:transparent}
+.vsw{flex:none;margin-left:auto;align-items:center;border:0;gap:0}
+.vsw+.vsw{margin-left:14px}
+.vsw span{font-size:12.5px;color:var(--muted);margin-right:8px}
+.vsw button{flex:none;font-size:12.5px;padding:5px 11px;white-space:nowrap;border:1px solid var(--rule)}
+.vsw button+button{border-left:0}
+.vsw button:first-of-type{border-radius:8px 0 0 8px}
+.vsw button:last-of-type{border-radius:0 8px 8px 0}
+.maps figcaption{font-family:var(--mono);font-size:11.5px;color:var(--ink2);text-align:center;line-height:1.3;margin-top:2px}
+.maps figcaption span{display:block;font-size:10.5px;color:var(--muted)}
+
+.eq{padding:2px 4px;min-width:0}
+.eqh{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.eq h3{font-size:14px;font-weight:600;margin:0}
+.eq h3 small{font-weight:400;color:var(--muted);font-size:12.5px}
+.mini-btn{font:inherit;font-size:12px;padding:3px 8px;border-radius:6px;border:1px solid var(--rule);background:var(--panel);color:var(--ink2);cursor:pointer}
+.mini-btn:hover{background:var(--plot)}
+.eqrow{display:flex;align-items:flex-start;gap:10px;padding:8px 2px 4px;overflow-x:auto}
+.eqrow.dense input.cell{width:48px;font-size:12px;padding:3px 4px}
+.blk{display:flex;flex-direction:column;align-items:center;gap:4px}
+.blk>small{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.br{position:relative;padding:6px 10px;display:grid;gap:4px;align-content:center}
+.br::before,.br::after{content:"";position:absolute;top:0;bottom:0;width:6px;border:1.5px solid var(--ink)}
+.br::before{left:0;border-right:0}
+.br::after{right:0;border-left:0}
+input.cell{font-family:var(--mono);font-size:13px;width:56px;cursor:ew-resize;touch-action:pan-y;padding:4px 5px;text-align:right;border:1px solid var(--rule);border-radius:5px;background:var(--plot);color:var(--ink);-moz-appearance:textfield}
+input.cell:focus{cursor:text;border-color:var(--bound)}
+input.cell::-webkit-inner-spin-button,input.cell::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.comp{margin:8px 0 2px;padding:8px 10px;border-radius:10px;background:var(--plot);display:flex;flex-direction:column;gap:2px}
+.comp .formula{margin:0 0 4px;font-size:12px;color:var(--muted);line-height:1.7}
+.det{font-family:var(--mono);font-size:12px;color:var(--ink2);margin:6px 0 0;padding-top:6px;border-top:1px solid var(--rule)}
+.det b{color:var(--ink);font-weight:500}
+.det em{display:block;font-family:var(--sans);font-style:normal;color:var(--muted);margin-top:2px}
+.comp .formula b{color:var(--ink);font-weight:500}
+.comp .formula em{font-family:var(--sans);font-style:normal;opacity:.75;margin-left:6px}
+.sl{display:grid;grid-template-columns:74px 1fr 50px;align-items:center;gap:8px;font-size:13px;color:var(--ink2)}
+.sl input{width:100%;accent-color:var(--bound);margin:4px 0}
+.sl output{font-family:var(--mono);font-size:12.5px;text-align:right;color:var(--ink)}
+.formula{font-family:var(--mono);font-size:13px;color:var(--ink2);margin:6px 0 0}
+.trace{font-family:var(--mono);font-size:12px;color:var(--ink2);margin:6px 0 0;line-height:1.6}
+.trace span{font-family:var(--sans);color:var(--muted)}
+
+@media (max-width:1000px){
+  .app{grid-template-columns:1fr}
+  .build{position:static;max-height:none;overflow:visible;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr))}
+}
+@media (max-width:520px){
+  .top,.app{padding-left:16px;padding-right:16px}
+  .stats{gap:14px}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>Neural Net Playground</h1>
+  <p>Two classes of points, a small network, and every weight on screen. It starts with do-nothing weights: layer 1 copies the input (W = identity) and the output neuron splits the plane at x₁ = 0, a vertical line. The data’s gap is tilted, so start by turning that line (or rotating layer 1) to fix it. Then move the sliders under each layer to rotate, stretch and shift the space, switch the activation to see it bend, pick harder data, and press <b>Train</b> when you want gradient descent to find the weights.</p>
+</header>
+
+<div class="app">
+  <aside class="build" aria-label="Network setup">
+    <section class="panel ctl">
+      <p class="ph">Setup</p>
+      <div>
+        <p class="gl">Data</p>
+        <div class="seg" data-group="ds">
+          <button data-v="linear" aria-pressed="true">Linear</button><button data-v="ring" aria-pressed="false">Ring</button><button data-v="xor" aria-pressed="false">XOR</button><button data-v="moons" aria-pressed="false">Moons</button><button data-v="spiral" aria-pressed="false">Spiral</button>
+        </div>
+      </div>
+      <div>
+        <p class="gl">Activation <em>(hidden layers)</em></p>
+        <div class="seg" data-group="act"><button data-v="none" aria-pressed="true">None</button><button data-v="tanh" aria-pressed="false">tanh</button><button data-v="relu" aria-pressed="false">ReLU</button><button data-v="leaky" aria-pressed="false" title="ReLU with a small slope (0.1) instead of 0 on the off side, so a neuron never goes fully dead">Leaky ReLU</button><button data-v="sin" aria-pressed="false" title="Periodic: folds the plane again and again, so one neuron makes stripes">sin</button></div>
+      </div>
+      <div>
+        <p class="gl">Depth <em>(hidden layers)</em></p>
+        <div class="seg" data-group="layers"><button data-v="1" aria-pressed="true">1</button><button data-v="2" aria-pressed="false">2</button><button data-v="3" aria-pressed="false">3</button></div>
+      </div>
+      <div>
+        <p class="gl">Width <em>(neurons in every hidden layer)</em></p>
+        <div class="seg" data-group="w"><button data-v="1" aria-pressed="false">1</button><button data-v="2" aria-pressed="true">2</button><button data-v="3" aria-pressed="false">3</button><button data-v="4" aria-pressed="false">4</button><button data-v="5" aria-pressed="false">5</button><button data-v="6" aria-pressed="false">6</button></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <p class="ph">Network</p>
+      <svg id="net" role="img" aria-label="Network diagram: neurons and weights"></svg>
+      <p id="sel"></p>
+      <p class="cap">Each line is a weight: thicker means larger, <span style="color:var(--pos)">teal</span> is positive, <span style="color:var(--neg)">red</span> is negative. Circles are neurons; they fill with values while you probe.</p>
+    </section>
+  </aside>
+
+  <main>
+    <section class="panel trainbar">
+      <div class="btns">
+        <button class="btn primary" id="train">▶ Train</button>
+        <button class="btn" id="step">+10 steps</button>
+        <button class="btn" id="reset" title="Layer 1 copies the input, the output splits at x₁ = 0">Reset</button>
+        <button class="btn" id="rand">Random weights</button>
+        <span class="vsep" aria-hidden="true"></span>
+        <button class="btn ghost" id="optBtn" aria-expanded="false" aria-controls="opts">⚙ Options</button>
+      </div>
+      <div class="stats">
+        <div class="st"><span>Epoch</span><b id="stE">0</b></div>
+        <div class="st"><span>Loss</span><b id="stL">–</b></div>
+        <div class="st"><span>Accuracy</span><b id="stA">–</b></div>
+      </div>
+      <div class="sparkw"><canvas id="spark" aria-label="Loss during training"></canvas></div>
+      <div class="opts" id="opts" hidden>
+        <label class="row">Learning rate <input type="range" id="lr" min="0.005" max="0.1" step="0.005" value="0.03"><span class="num" id="lrOut">0.030</span></label>
+        <label class="check"><input type="checkbox" id="pts" checked> Data points</label>
+        <label class="check"><input type="checkbox" id="heat" checked> Background: network prediction</label>
+        <label class="check"><input type="checkbox" id="fold" checked> Neuron fold lines</label>
+        <label class="check"><input type="checkbox" id="grid" checked> Input grid carried through layers</label>
+        <label class="check"><input type="checkbox" id="auto"> Auto-fit the output neuron whenever something changes</label>
+      </div>
+    </section>
+
+    <nav class="tabs" id="tabs" role="tablist" aria-label="Which layer to look at"></nav>
+    <section class="stage" id="stage"></section>
+  </main>
+</div>
+
+<script>
+(()=>{
+const $=s=>document.querySelector(s);
+const SUB=['₀','₁','₂','₃','₄','₅','₆'];
+const S={ds:'linear',hidden:[2],depth:1,width:2,act:'none',auto:false,lr:0.03,probe:null,training:false,epoch:0,hist:[],pts:true,heat:true,fold:true,grid:true,tab:'out',view:'space',
+  views:Object.assign([0,1,2].map(()=>({yaw:0.7,pitch:0.45})),{hm:{yaw:0.7,pitch:0.45}}),cam:{},inView:'plane'};
+let X=[],Y=[],net=null,adam=null,drag=null;
+
+const clamp=(v,m)=>Math.max(-m,Math.min(m,v));
+const sig=s=>1/(1+Math.exp(-s));
+const LEAK=0.1; // visible slope; libraries usually default to 0.01
+const act=z=>S.act==='tanh'?Math.tanh(z):S.act==='relu'?(z>0?z:0):S.act==='leaky'?(z>0?z:LEAK*z):S.act==='sin'?Math.sin(z):z;
+// Bounded activations get a tight fixed view of their output space, unbounded ones the input's −4…4.
+const bounded=()=>S.act==='tanh'||S.act==='sin';
+const fmt=n=>(n<=-0.005?'−':'')+Math.abs(n).toFixed(2);
+const pl=(n,w)=>n+' '+w+(n===1?'':'s');
+const z2=A=>A.map(r=>Array.isArray(r)?z2(r):0);
+const sizes=()=>[2,...S.hidden,1];
+const rnd=a=>(Math.random()*2-1)*a;
+
+function rng(seed){let s=seed>>>0;return()=>{s=(Math.imul(s,1664525)+1013904223)>>>0;return s/4294967296;};}
+let LIN_ANGLE=55;
+function makeData(){
+  const r=rng(20260924);X=[];Y=[];
+  const add=(x,y,c)=>{X.push([x,y]);Y.push(c);};
+  const gauss=()=>Math.sqrt(-2*Math.log(r()+1e-12))*Math.cos(6.2832*r());
+  if(S.ds==='linear'){
+    // Two elongated clouds split by a tilted gap, so the default vertical boundary is visibly off
+    // and the first thing to try is turning it.
+    const a=LIN_ANGLE*Math.PI/180,ux=Math.cos(a),uy=Math.sin(a);
+    for(let c=0;c<2;c++)for(let i=0;i<50;i++){
+      const along=(c?1:-1)*1.6+gauss()*0.5,across=gauss()*1.2;
+      add(ux*along-uy*across,uy*along+ux*across,c);
+    }
+  }else if(S.ds==='ring'){
+    for(let i=0;i<40;i++){const a=r()*6.2832,d=Math.sqrt(r())*1.2;add(d*Math.cos(a),d*Math.sin(a),0);}
+    for(let i=0;i<55;i++){const a=r()*6.2832,d=2.3+r()*1.1;add(d*Math.cos(a),d*Math.sin(a),1);}
+  }else if(S.ds==='xor'){
+    while(X.length<100){const x=r()*6.8-3.4,y=r()*6.8-3.4;if(Math.abs(x)<0.4||Math.abs(y)<0.4)continue;add(x,y,x*y>0?0:1);}
+  }else if(S.ds==='moons'){
+    for(let i=0;i<50;i++){const t=r()*Math.PI;add((Math.cos(t)-0.5)*2.3+(r()-0.5)*0.35,(Math.sin(t)-0.25)*2.3+(r()-0.5)*0.35,0);}
+    for(let i=0;i<50;i++){const t=r()*Math.PI;add((0.5-Math.cos(t))*2.3+(r()-0.5)*0.35,(0.25-Math.sin(t))*2.3+(r()-0.5)*0.35,1);}
+  }else{
+    for(let c=0;c<2;c++)for(let i=0;i<60;i++){
+      const t=i/60,rad=0.35+t*3.2,a=t*3.4*Math.PI+c*Math.PI;
+      add(rad*Math.cos(a)+gauss()*0.1,rad*Math.sin(a)+gauss()*0.1,c);
+    }
+  }
+}
+
+// Clean start: layer-1 neurons fan out evenly (width 2 = identity), deeper layers are identity,
+// and the output reads neuron 1 only, so the boundary starts as the line x₁ = 0.
+function cleanInit(){
+  const sz=sizes(),L=sz.length-1,W=[],B=[];
+  for(let l=0;l<L;l++){
+    const n=sz[l+1],m=sz[l];
+    B[l]=new Array(n).fill(0);
+    W[l]=Array.from({length:n},(_,i)=>{
+      if(l===L-1)return Array.from({length:m},(_,j)=>j===0?2:0);
+      if(l===0){const a=i*Math.PI/n;return [+Math.cos(a).toFixed(4),+Math.sin(a).toFixed(4)];}
+      return Array.from({length:m},(_,j)=>i===j?1:0);
+    });
+  }
+  net={W,B};resetAdam();
+}
+function buildNet(){
+  const sz=sizes(),L=sz.length-1,W=[],B=[];
+  for(let l=0;l<L;l++){
+    const isOut=l===L-1;
+    W[l]=Array.from({length:sz[l+1]},()=>Array.from({length:sz[l]},()=>rnd(isOut?1:1.5)));
+    B[l]=Array.from({length:sz[l+1]},()=>rnd(isOut?0.3:0.8));
+  }
+  net={W,B};resetAdam();
+}
+function resetAdam(){adam={t:0,mW:z2(net.W),vW:z2(net.W),mB:z2(net.B),vB:z2(net.B)};}
+
+function fwd(x,start=0){
+  const L=net.W.length,hs=[x],zs=[];let a=x;
+  for(let l=start;l<L;l++){
+    const W=net.W[l],b=net.B[l],n=W.length,z=new Array(n),h=new Array(n);
+    for(let i=0;i<n;i++){let s=b[i];const w=W[i];for(let j=0;j<a.length;j++)s+=w[j]*a[j];z[i]=s;h[i]=l<L-1?act(s):s;}
+    zs.push(z);hs.push(h);a=h;
+  }
+  return {zs,hs,s:a[0]};
+}
+function metrics(){
+  let loss=0,c=0;
+  for(let i=0;i<X.length;i++){const s=fwd(X[i]).s,p=sig(s);loss+=Y[i]?-Math.log(p+1e-9):-Math.log(1-p+1e-9);if((s>0?1:0)===Y[i])c++;}
+  return {loss:loss/X.length,acc:Math.round(100*c/X.length)};
+}
+function grads(from){
+  const L=net.W.length,gW=z2(net.W),gB=z2(net.B),N=X.length;
+  for(let n=0;n<N;n++){
+    const {zs,hs}=fwd(X[n]);let d=[sig(zs[L-1][0])-Y[n]];
+    for(let l=L-1;l>=from;l--){
+      const a=hs[l],gw=gW[l],gb=gB[l];
+      for(let i=0;i<d.length;i++){gb[i]+=d[i];for(let j=0;j<a.length;j++)gw[i][j]+=d[i]*a[j];}
+      if(l===from)break;
+      const nd=new Array(a.length);
+      for(let j=0;j<a.length;j++){
+        let s=0;for(let i=0;i<d.length;i++)s+=net.W[l][i][j]*d[i];
+        const z=zs[l-1][j],h=a[j];
+        nd[j]=s*(S.act==='tanh'?1-h*h:S.act==='relu'?(z>0?1:0):S.act==='leaky'?(z>0?1:LEAK):S.act==='sin'?Math.cos(z):1);
+      }
+      d=nd;
+    }
+  }
+  for(let l=0;l<gW.length;l++)for(let i=0;i<gW[l].length;i++){gB[l][i]/=N;for(let j=0;j<gW[l][i].length;j++)gW[l][i][j]/=N;}
+  return {gW,gB};
+}
+function adamStep(g,lr,from){
+  adam.t++;const b1=0.9,b2=0.999,c1=1-Math.pow(b1,adam.t),c2=1-Math.pow(b2,adam.t);
+  for(let l=from;l<net.W.length;l++)for(let i=0;i<net.W[l].length;i++){
+    for(let j=0;j<net.W[l][i].length;j++){
+      const gg=g.gW[l][i][j];
+      const m=adam.mW[l][i][j]=b1*adam.mW[l][i][j]+(1-b1)*gg;
+      const v=adam.vW[l][i][j]=b2*adam.vW[l][i][j]+(1-b2)*gg*gg;
+      net.W[l][i][j]=clamp(net.W[l][i][j]-lr*(m/c1)/(Math.sqrt(v/c2)+1e-8),8);
+    }
+    const gg=g.gB[l][i];
+    const m=adam.mB[l][i]=b1*adam.mB[l][i]+(1-b1)*gg;
+    const v=adam.vB[l][i]=b2*adam.vB[l][i]+(1-b2)*gg*gg;
+    net.B[l][i]=clamp(net.B[l][i]-lr*(m/c1)/(Math.sqrt(v/c2)+1e-8),8);
+  }
+}
+function fitOut(){
+  const L=net.W.length;
+  net.W[L-1]=net.W[L-1].map(r=>r.map(()=>0));net.B[L-1]=[0];
+  resetAdam();
+  for(let it=0;it<300;it++)adamStep(grads(L-1),0.1,L-1);
+  resetAdam();
+}
+
+function col(){
+  const cs=getComputedStyle(document.documentElement),g=n=>cs.getPropertyValue(n).trim();
+  return {plot:g('--plot'),ink:g('--ink'),ink2:g('--ink2'),muted:g('--muted'),rule:g('--rule'),cA:g('--cA'),cB:g('--cB'),bound:g('--bound'),pos:g('--pos'),neg:g('--neg'),fold:g('--fold')};
+}
+function rgba(hex,a){const n=parseInt(hex.replace('#',''),16);return `rgba(${n>>16},${(n>>8)&255},${n&255},${a})`;}
+function prep(cv){
+  const r=cv.getBoundingClientRect(),dpr=window.devicePixelRatio||1,w=Math.max(10,Math.round(r.width)),h=Math.max(10,Math.round(r.height));
+  if(cv.width!==w*dpr||cv.height!==h*dpr){cv.width=w*dpr;cv.height=h*dpr;}
+  const ctx=cv.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);
+  return {ctx,w,h};
+}
+function contour(F,G){
+  const segs=[];
+  for(let k=0;k<G;k++)for(let i=0;i<G;i++){
+    const v00=F[k*(G+1)+i],v10=F[k*(G+1)+i+1],v01=F[(k+1)*(G+1)+i],v11=F[(k+1)*(G+1)+i+1],pts=[];
+    const e=(a,b,ax,ay,bx,by)=>{if((a>0)!==(b>0)){const t=a/(a-b);pts.push([ax+(bx-ax)*t,ay+(by-ay)*t]);}};
+    e(v00,v10,i,k,i+1,k);e(v10,v11,i+1,k,i+1,k+1);e(v11,v01,i+1,k+1,i,k+1);e(v01,v00,i,k+1,i,k);
+    if(pts.length>=2)segs.push([pts[0],pts[1]]);
+    if(pts.length===4)segs.push([pts[2],pts[3]]);
+  }
+  return chain(segs);
+}
+function chain(segs){
+  const key=p=>Math.round(p[0]*1e4)+','+Math.round(p[1]*1e4),m=new Map();
+  segs.forEach((s,i)=>{for(const e of [0,1]){const k=key(s[e]);if(!m.has(k))m.set(k,[]);m.get(k).push(i);}});
+  const used=new Uint8Array(segs.length),lines=[];
+  for(let i=0;i<segs.length;i++){
+    if(used[i])continue;used[i]=1;const line=[segs[i][0],segs[i][1]];
+    for(const atEnd of [true,false]){
+      let cur=atEnd?line[line.length-1]:line[0];
+      for(;;){
+        const c=(m.get(key(cur))||[]).find(j=>!used[j]);if(c===undefined)break;used[c]=1;
+        const s=segs[c],nx=key(s[0])===key(cur)?s[1]:s[0];
+        if(atEnd)line.push(nx);else line.unshift(nx);cur=nx;
+      }
+    }
+    lines.push(line);
+  }
+  return lines;
+}
+// Name tags for lines on a chart. Each tag sits where its line enters the view (trying both ends),
+// so lines that cross in the middle don't stack their tags on top of each other.
+const segPts=(a,b)=>Array.from({length:21},(_,i)=>[a[0]+(b[0]-a[0])*i/20,a[1]+(b[1]-a[1])*i/20]);
+function drawTags(ctx,C,tags,w,h){
+  const m=14,th=16,boxes=[],hit=b=>boxes.some(o=>b[0]<o[0]+o[2]&&o[0]<b[0]+b[2]&&b[1]<o[1]+o[3]&&o[1]<b[1]+b[3]);
+  ctx.save();ctx.font='11px "IBM Plex Mono", monospace';ctx.textBaseline='middle';
+  for(const t of tags){
+    const tw=ctx.measureText(t.text).width+8,inside=p=>p[0]>m+tw/2&&p[0]<w-m-tw/2&&p[1]>m&&p[1]<h-m;
+    let spot=null,fallback=null;
+    for(const pl of t.lines){
+      for(const seq of [pl,[...pl].reverse()]){
+        const p=seq.find(inside);if(!p)continue;
+        const b=[p[0]-tw/2,p[1]-th/2,tw,th];fallback=fallback||b;
+        if(!hit(b)){spot=b;break;}
+      }
+      if(spot)break;
+    }
+    spot=spot||fallback;if(!spot)continue;boxes.push(spot);
+    ctx.fillStyle=rgba(C.plot,0.88);ctx.beginPath();ctx.roundRect(spot[0],spot[1],spot[2],spot[3],4);ctx.fill();
+    ctx.fillStyle=t.color;ctx.fillText(t.text,spot[0]+4,spot[1]+th/2+0.5);
+  }
+  ctx.restore();
+}
+function strokeLines(ctx,lines,map,color,width,dash){
+  ctx.save();ctx.strokeStyle=color;ctx.lineWidth=width;ctx.setLineDash(dash);ctx.lineCap='round';ctx.lineJoin='round';
+  ctx.beginPath();
+  lines.forEach(line=>{line.forEach((p,i)=>{const q=map(p);if(i)ctx.lineTo(q[0],q[1]);else ctx.moveTo(q[0],q[1]);});});
+  ctx.stroke();ctx.restore();
+}
+// force: the output-axis strip always shows points, since they are its only content.
+function drawPoints(ctx,C,pos,r=4.3,force=false){
+  if(!S.pts&&!force)return;
+  for(let i=0;i<X.length;i++){const p=pos(i);ctx.beginPath();ctx.arc(p[0],p[1],r,0,6.2832);ctx.fillStyle=Y[i]?C.cB:C.cA;ctx.fill();ctx.lineWidth=r>3?1.2:0.6;ctx.strokeStyle=C.plot;ctx.stroke();}
+}
+const DASH=[[6,5],[1.5,3.5],[9,3,1.5,3]];
+const foldDash=l=>DASH[l]||[];
+// Per-space camera, keyed 'in' or a hidden layer index: x, y = view centre (for 3-D a screen offset
+// as a fraction of the canvas), s = zoom. Shared by every chart of that space, so a layer's space
+// looks the same as "After" on its tab and as "Before" on the next.
+const camOf=k=>S.cam[k]||(S.cam[k]={x:0,y:0,s:1});
+const baseSpan=k=>k==='in'?8:(bounded()?2.3:8);
+const viewMoved=k=>{const c=S.cam[k],v=k==='hm'?S.views.hm:k!=='in'&&S.hidden[k]===3&&!asTiles(k)&&S.views[k];return !!c&&(c.x!==0||c.y!==0||c.s!==1)||!!v&&(v.yaw!==0.7||v.pitch!==0.45);};
+function resetView(k){delete S.cam[k];if(k!=='in'){S.views[k].yaw=0.7;S.views[k].pitch=0.45;}later();}
+// ~8 grid lines at 1/2/5 steps for whatever span is on screen.
+function niceStep(span){const raw=span/8,p=Math.pow(10,Math.floor(Math.log10(raw))),m=raw/p;return (m<1.5?1:m<3.5?2:m<7.5?5:10)*p;}
+const asTiles=l=>S.hidden[l]>3||S.view==='neurons';
+const hexRGB=hex=>{const n=parseInt(hex.replace('#',''),16);return [n>>16,(n>>8)&255,n&255];};
+// Paints a gw×gh grid of cells as one smoothed image; fn(i,row) returns [hex, alpha], row 0 = top.
+// A single image avoids the seams that overlapping translucent rects leave behind.
+function paintGrid(ctx,w,h,gw,gh,fn){
+  const off=document.createElement('canvas');off.width=gw;off.height=gh;
+  const o=off.getContext('2d'),im=o.createImageData(gw,gh),D=im.data,cache={};
+  for(let r=0;r<gh;r++)for(let i=0;i<gw;i++){
+    const [hex,a]=fn(i,r),c=cache[hex]||(cache[hex]=hexRGB(hex)),k=(r*gw+i)*4;
+    D[k]=c[0];D[k+1]=c[1];D[k+2]=c[2];D[k+3]=Math.round(a*255);
+  }
+  o.putImageData(im,0,0);ctx.save();ctx.imageSmoothingEnabled=true;ctx.drawImage(off,0,0,w,h);ctx.restore();
+}
+const heatCell=(C,s)=>{const p=sig(s);return [p>0.5?C.cB:C.cA,0.06+0.3*Math.abs(p-0.5)*2];};
+
+// Probe: any location on the input plane, traced through every layer. Drawn on overlay canvases so
+// hovering never re-renders the (expensive) charts underneath.
+const mappers={};
+function drawProbe(){
+  const C=col(),pr=S.probe?fwd(S.probe):null;
+  document.querySelectorAll('#stage canvas.ov').forEach(ov=>{
+    const {ctx,w}=prep(ov),m=mappers[ov.id.slice(0,-3)];
+    if(!pr||!m)return;
+    const q=m.f(m.space==='in'?S.probe:m.space==='hm'?[S.probe[0],S.probe[1],pr.s]:m.space==='z'?[pr.s]:pr.hs[m.space+1]),k=w<200?0.6:1,R=8*k,a=4*k,b=13*k;
+    ctx.lineWidth=2.2*k;ctx.strokeStyle=C.ink;ctx.beginPath();ctx.arc(q[0],q[1],R,0,6.2832);ctx.stroke();
+    ctx.lineWidth=1.4;ctx.beginPath();ctx.moveTo(q[0]-b,q[1]);ctx.lineTo(q[0]-a,q[1]);ctx.moveTo(q[0]+a,q[1]);ctx.lineTo(q[0]+b,q[1]);
+    ctx.moveTo(q[0],q[1]-b);ctx.lineTo(q[0],q[1]-a);ctx.moveTo(q[0],q[1]+a);ctx.lineTo(q[0],q[1]+b);ctx.stroke();
+  });
+  drawNet(C);probeText(pr);
+}
+// folds: which hidden layers' neuron lines (z = 0) to draw, pulled back to the input plane.
+function drawInput(C,id,folds){
+  const cv=document.getElementById(id);if(!cv)return;
+  const c=camOf('in'),span=baseSpan('in')/c.s,x0=c.x-span/2,y0=c.y-span/2,G=80,st=span/G;
+  const {ctx,w,h}=prep(cv),px=x=>(x-x0)/span*w,py=y=>h-(y-y0)/span*h;
+  const V=(G+1)*(G+1),F=new Float32Array(V),Z=S.hidden.map(n=>Array.from({length:n},()=>new Float32Array(V)));
+  for(let k=0;k<=G;k++)for(let i=0;i<=G;i++){
+    const r=fwd([x0+i*st,y0+k*st]),idx=k*(G+1)+i;F[idx]=r.s;
+    if(S.fold)for(const l of folds)for(let q=0;q<S.hidden[l];q++)Z[l][q][idx]=r.zs[l][q];
+  }
+  if(S.heat){
+    paintGrid(ctx,w,h,G,G,(i,r)=>{const k=G-1-r;return heatCell(C,(F[k*(G+1)+i]+F[k*(G+1)+i+1]+F[(k+1)*(G+1)+i]+F[(k+1)*(G+1)+i+1])/4);});
+  }
+  const step=niceStep(span);
+  ctx.strokeStyle=rgba(C.muted,0.18);ctx.lineWidth=1;ctx.beginPath();
+  for(let g=Math.ceil(x0/step)*step;g<=x0+span;g+=step){ctx.moveTo(px(g),0);ctx.lineTo(px(g),h);}
+  for(let g=Math.ceil(y0/step)*step;g<=y0+span;g+=step){ctx.moveTo(0,py(g));ctx.lineTo(w,py(g));}
+  ctx.stroke();
+  ctx.strokeStyle=rgba(C.muted,0.6);ctx.beginPath();
+  if(y0<=0&&0<=y0+span){ctx.moveTo(0,py(0));ctx.lineTo(w,py(0));}
+  if(x0<=0&&0<=x0+span){ctx.moveTo(px(0),0);ctx.lineTo(px(0),h);}
+  ctx.stroke();
+  ctx.fillStyle=C.muted;ctx.font='12px '+getComputedStyle(document.body).fontFamily;
+  ctx.fillText('x₁',w-18,Math.min(h-6,Math.max(14,py(0)-6)));ctx.fillText('x₂',Math.min(w-18,Math.max(4,px(0)+6)),14);
+  const gm=p=>[px(x0+p[0]*st),py(y0+p[1]*st)];
+  const tags=[];
+  if(S.fold)for(const l of folds)for(let q=0;q<S.hidden[l];q++){
+    const lines=contour(Z[l][q],G);strokeLines(ctx,lines,gm,C.fold,1.4,foldDash(l));
+    tags.push({text:(folds.length>1?`L${l+1}·`:'')+'h'+SUB[q+1],color:C.ink2,lines:lines.map(li=>li.map(gm))});
+  }
+  strokeLines(ctx,contour(F,G),gm,C.bound,2.6,[]);
+  drawPoints(ctx,C,i=>[px(X[i][0]),py(X[i][1])]);
+  drawTags(ctx,C,tags,w,h);
+  mappers[id]={space:'in',kind:'in',key:'in',f:v=>[px(v[0]),py(v[1])],inv:(a,b)=>[x0+a/w*span,y0+(h-b)/h*span]};
+}
+
+function lineBox(w0,w1,b,x0,x1,y0,y1){
+  if(Math.abs(w0)<1e-9&&Math.abs(w1)<1e-9)return null;
+  if(Math.abs(w1)>=Math.abs(w0))return [[x0,-(w0*x0+b)/w1],[x1,-(w0*x1+b)/w1]];
+  return [[-(w1*y0+b)/w0,y0],[-(w1*y1+b)/w0,y1]];
+}
+// Input-plane grid lines pushed through layers 1..l+1, drawn with map(h) -> canvas point.
+function warpGrid(ctx,C,l,map){
+  if(!S.grid)return;
+  ctx.save();ctx.lineWidth=1;
+  for(let g=-3;g<=3;g++)for(let dir=0;dir<2;dir++){
+    ctx.strokeStyle=rgba(C.ink,g===0?0.45:0.14);ctx.beginPath();
+    for(let t=0;t<=48;t++){const u=-4+t/6,h=fwd(dir?[g,u]:[u,g]).hs[l+1],q=map(h);if(t)ctx.lineTo(q[0],q[1]);else ctx.moveTo(q[0],q[1]);}
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+function drawMaps(l,C,id){
+  const c=camOf('in'),span=baseSpan('in')/c.s,x0=c.x-span/2,y0=c.y-span/2;
+  const d=S.hidden[l],G=36,st=span/G,vals=Array.from({length:d},()=>new Float32Array(G*G));
+  for(let k=0;k<G;k++)for(let i=0;i<G;i++){const hv=fwd([x0+(i+0.5)*st,y0+span-(k+0.5)*st]).hs[l+1];for(let q=0;q<d;q++)vals[q][k*G+i]=hv[q];}
+  // Pre-activation z on the cell corners (row 0 = bottom) for each neuron's fold line.
+  const Z=Array.from({length:d},()=>new Float32Array((G+1)*(G+1)));
+  if(S.fold)for(let k=0;k<=G;k++)for(let i=0;i<=G;i++){const z=fwd([x0+i*st,y0+k*st]).zs[l];for(let q=0;q<d;q++)Z[q][k*(G+1)+i]=z[q];}
+  for(let q=0;q<d;q++){
+    const cv=document.getElementById(`${id}_${q}`);if(!cv)continue;
+    const {ctx,w,h}=prep(cv),v=vals[q];let m=1e-6;for(const x of v)m=Math.max(m,Math.abs(x));
+    paintGrid(ctx,w,h,G,G,(i,k)=>{const x=v[k*G+i];return [x>=0?C.pos:C.neg,0.08+0.72*Math.abs(x)/m];});
+    if(S.fold)strokeLines(ctx,contour(Z[q],G),p=>[p[0]/G*w,h-p[1]/G*h],C.fold,1.3,foldDash(l));
+    drawPoints(ctx,C,i=>[(X[i][0]-x0)/span*w,h-(X[i][1]-y0)/span*h],1.8);
+    const rg=document.getElementById(`${cv.id}_rg`);
+    if(rg){
+      let mn=Infinity,mx=-Infinity;for(const x of v){if(x<mn)mn=x;if(x>mx)mx=x;}
+      const note=S.act==='relu'?(mn>0.005?'always on':mx<=0.005?'always off':''):'';
+      rg.textContent=`${fmt(mn)} … ${fmt(mx)}${note?' · '+note:''}`;
+    }
+    mappers[cv.id]={space:'in',kind:'in',key:'in',f:v=>[(v[0]-x0)/span*w,h-(v[1]-y0)/span*h],inv:(a,b)=>[x0+a/w*span,y0+(h-b)/h*span]};
+  }
+}
+function drawHidden(l,C,id){
+  const d=S.hidden[l];
+  if(asTiles(l))return drawMaps(l,C,id);
+  const cv=document.getElementById(id);if(!cv)return;
+  const {ctx,w,h}=prep(cv),H=X.map(x=>fwd(x).hs[l+1]),L=net.W.length,nW=net.W[l+1],nB=net.B[l+1],isOut=l+1===L-1;
+  const style=isOut?{c:C.bound,w:2.6,dash:[]}:{c:C.fold,w:1.5,dash:foldDash(l+1)};
+  // Fixed default views (no auto-zoom) so stretching, shifting and squashing by the weights stay visible;
+  // unbounded activations default to the input's −4…4 window, so identity weights reproduce it exactly.
+  // The user's pan/zoom (camera) is applied on top.
+  const cam=camOf(l),ce=d<3?[cam.x,cam.y]:[0,0,0],span=d<3?baseSpan(l)/cam.s:baseSpan(l);
+  ctx.font='12px '+getComputedStyle(document.body).fontFamily;
+  if(d===1){
+    const x0=ce[0]-span/2,P=v=>(v-x0)/span*w;
+    if(S.heat){const G=60;paintGrid(ctx,w,h,G,1,i=>heatCell(C,fwd([x0+(i+0.5)*span/G],l+1).s));}
+    ctx.strokeStyle=rgba(C.muted,0.6);ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(0,h/2);ctx.lineTo(w,h/2);ctx.stroke();
+    if(0>=x0&&0<=x0+span){ctx.beginPath();ctx.moveTo(P(0),h/2-6);ctx.lineTo(P(0),h/2+6);ctx.stroke();ctx.fillStyle=C.muted;ctx.fillText('0',P(0)-3,h/2+20);}
+    ctx.fillStyle=C.muted;ctx.fillText('h₁',w-18,h/2-8);
+    const tags=[];
+    nW.forEach((row,q)=>{if(Math.abs(row[0])<1e-9)return;const x=P(-nB[q]/row[0]);
+      tags.push({text:isOut?'p = 0.5':`L${l+2}·h${SUB[q+1]}`,color:isOut?C.bound:C.ink2,lines:[segPts([x,0],[x,h*0.3])]});ctx.save();ctx.strokeStyle=style.c;ctx.lineWidth=style.w;ctx.setLineDash(style.dash);ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke();ctx.restore();});
+    drawPoints(ctx,C,i=>[P(H[i][0]),h/2+(Y[i]?1:-1)*h*0.16+((i*37)%13-6)*2.2]);
+    drawTags(ctx,C,tags,w,h);
+    mappers[id]={space:l,kind:'1d',key:l,f:v=>[P(v[0]),h/2]};
+  }else if(d===2){
+    const x0=ce[0]-span/2,y0=ce[1]-span/2,P=v=>(v-x0)/span*w,Q=v=>h-(v-y0)/span*h;
+    const G=50,st2=span/G,F=new Float32Array((G+1)*(G+1));
+    for(let k=0;k<=G;k++)for(let i=0;i<=G;i++)F[k*(G+1)+i]=fwd([x0+i*st2,y0+k*st2],l+1).s;
+    if(S.heat)paintGrid(ctx,w,h,G,G,(i,r)=>{const k=G-1-r;return heatCell(C,(F[k*(G+1)+i]+F[k*(G+1)+i+1]+F[(k+1)*(G+1)+i]+F[(k+1)*(G+1)+i+1])/4);});
+    ctx.strokeStyle=rgba(C.muted,0.6);ctx.lineWidth=1;ctx.beginPath();
+    if(0>=y0&&0<=y0+span){ctx.moveTo(0,Q(0));ctx.lineTo(w,Q(0));}
+    if(0>=x0&&0<=x0+span){ctx.moveTo(P(0),0);ctx.lineTo(P(0),h);}
+    ctx.stroke();
+    warpGrid(ctx,C,l,v=>[P(v[0]),Q(v[1])]);
+    ctx.fillStyle=C.muted;ctx.fillText('h₁',w-18,Math.min(h-6,Math.max(14,Q(0)-6)));ctx.fillText('h₂',Math.min(w-18,Math.max(4,P(0)+6)),14);
+    if(!isOut)strokeLines(ctx,contour(F,G),p=>[P(x0+p[0]*st2),Q(y0+p[1]*st2)],C.bound,2.6,[]);
+    const tags=[],tagOf=q=>isOut?{text:'p = 0.5',color:C.bound}:{text:`L${l+2}·h${SUB[q+1]}`,color:C.ink2};
+    if(isOut||S.fold)nW.forEach((row,q)=>{const seg=lineBox(row[0],row[1],nB[q],x0,x0+span,y0,y0+span);if(!seg)return;
+      tags.push({...tagOf(q),lines:[segPts([P(seg[0][0]),Q(seg[0][1])],[P(seg[1][0]),Q(seg[1][1])])]});ctx.save();ctx.strokeStyle=style.c;ctx.lineWidth=style.w;ctx.setLineDash(style.dash);ctx.lineCap='round';ctx.beginPath();ctx.moveTo(P(seg[0][0]),Q(seg[0][1]));ctx.lineTo(P(seg[1][0]),Q(seg[1][1]));ctx.stroke();ctx.restore();});
+    drawPoints(ctx,C,i=>[P(H[i][0]),Q(H[i][1])]);
+    drawTags(ctx,C,tags,w,h);
+    mappers[id]={space:l,kind:'2d',key:l,f:v=>[P(v[0]),Q(v[1])]};
+  }else{
+    const v=S.views[l],cy=Math.cos(v.yaw),sy=Math.sin(v.yaw),cp=Math.cos(v.pitch),sp=Math.sin(v.pitch),sc=Math.min(w,h)*0.6*cam.s;
+    const nq=hh=>[(hh[0]-ce[0])/span,(hh[1]-ce[1])/span,(hh[2]-ce[2])/span];
+    const pr=q=>{const x=q[0]*cy-q[1]*sy,dd=q[0]*sy+q[1]*cy,y=q[2]*cp-dd*sp;return [w/2+cam.x*w+x*sc,h/2+cam.y*h-y*sc];};
+    ctx.strokeStyle=rgba(C.muted,0.28);ctx.lineWidth=1;
+    const c=[-0.5,0.5];
+    for(const a of c)for(const b of c){
+      [[[-0.5,a,b],[0.5,a,b]],[[a,-0.5,b],[a,0.5,b]],[[a,b,-0.5],[a,b,0.5]]].forEach(([p,q])=>{const A=pr(p),B=pr(q);ctx.beginPath();ctx.moveTo(A[0],A[1]);ctx.lineTo(B[0],B[1]);ctx.stroke();});
+    }
+    // The data sheet: the input plane carried into this space, tinted by the network's prediction.
+    // Cells with the same tint are filled as one path, so neighbours don't leave seams.
+    if(S.heat){
+      const N=24,st3=8/N,P3=[],Sv=[];
+      for(let k=0;k<=N;k++)for(let i=0;i<=N;i++){const r=fwd([-4+i*st3,-4+k*st3]);P3.push(pr(nq(r.hs[l+1])));Sv.push(r.s);}
+      const groups=new Map();
+      for(let k=0;k<N;k++)for(let i=0;i<N;i++){
+        const a=k*(N+1)+i,idx=[a,a+1,a+N+2,a+N+1],[hex,al]=heatCell(C,(Sv[idx[0]]+Sv[idx[1]]+Sv[idx[2]]+Sv[idx[3]])/4);
+        const key=hex+'|'+Math.round(al*25)/25;if(!groups.has(key))groups.set(key,[]);groups.get(key).push(idx);
+      }
+      for(const [key,cells] of groups){
+        const [hex,al]=key.split('|');ctx.fillStyle=rgba(hex,+al*0.75);ctx.beginPath();
+        for(const idx of cells){
+          // Folded parts of the sheet face the other way on screen; give every cell the same winding
+          // so overlapping cells add up instead of cancelling into holes.
+          const pts=idx.map(j=>P3[j]);let ar=0;for(let n=0;n<4;n++){const a=pts[n],b=pts[(n+1)%4];ar+=a[0]*b[1]-b[0]*a[1];}
+          if(ar<0)pts.reverse();
+          pts.forEach((q2,n)=>n?ctx.lineTo(q2[0],q2[1]):ctx.moveTo(q2[0],q2[1]));ctx.closePath();
+        }
+        ctx.fill();
+      }
+    }
+    warpGrid(ctx,C,l,v=>pr(nq(v)));
+    const o=[-0.5,-0.5,-0.5],names=['h₁','h₂','h₃'];ctx.strokeStyle=rgba(C.muted,0.8);ctx.fillStyle=C.muted;
+    for(let k=0;k<3;k++){const e=o.slice();e[k]=0.62;const A=pr(o),B=pr(e);ctx.beginPath();ctx.moveTo(A[0],A[1]);ctx.lineTo(B[0],B[1]);ctx.stroke();ctx.fillText(names[k],B[0]+4,B[1]-4);}
+    // Planes cover the default box or all the data plus a margin, whichever is larger, so they always reach
+    // the points even when an unbounded activation throws them far outside the box.
+    const R=[0,1,2].map(k=>{let a=-0.5,b=0.5;for(const hh of H){const t=(hh[k]-ce[k])/span;a=Math.min(a,t-0.08);b=Math.max(b,t+0.08);}return [a,b];});
+    const lerp=(k,f)=>R[k][0]+f*(R[k][1]-R[k][0]),outR=q3=>q3.some((t,k)=>t<R[k][0]||t>R[k][1]);
+    nW.forEach((row,q)=>{
+      const vp=[row[0]*span,row[1]*span,row[2]*span],cc=nB[q]+row[0]*ce[0]+row[1]*ce[1]+row[2]*ce[2];
+      let kk=0;for(let k=1;k<3;k++)if(Math.abs(vp[k])>Math.abs(vp[kk]))kk=k;
+      if(Math.abs(vp[kk])<1e-9)return;
+      const ia=(kk+1)%3,ib=(kk+2)%3;
+      // The decision plane (p = 0.5) gets a translucent purple fill, so it reads as a surface cutting the data sheet.
+      if(isOut){
+        const N=32,at=(u,v)=>{const q3=[0,0,0];q3[ia]=lerp(ia,u/N);q3[ib]=lerp(ib,v/N);q3[kk]=-(cc+vp[ia]*q3[ia]+vp[ib]*q3[ib])/vp[kk];return q3;};
+        ctx.fillStyle=rgba(C.bound,0.16);ctx.beginPath();
+        for(let u=0;u<N;u++)for(let v=0;v<N;v++){
+          const cs=[at(u,v),at(u+1,v),at(u+1,v+1),at(u,v+1)];
+          if(cs.some(outR))continue;
+          const pts=cs.map(pr);let ar=0;for(let n=0;n<4;n++){const a=pts[n],b=pts[(n+1)%4];ar+=a[0]*b[1]-b[0]*a[1];}
+          if(ar<0)pts.reverse();
+          pts.forEach((s2,n)=>n?ctx.lineTo(s2[0],s2[1]):ctx.moveTo(s2[0],s2[1]));ctx.closePath();
+        }
+        ctx.fill();
+      }
+      ctx.save();ctx.strokeStyle=rgba(style.c,isOut?0.7:0.45);ctx.lineWidth=isOut?1.1:1;if(!isOut)ctx.setLineDash([2,3]);
+      for(let dir=0;dir<2;dir++)for(let gi=0;gi<=8;gi++){
+        const fa=dir?ib:ia,ra=dir?ia:ib,fix=lerp(fa,gi/8);let prev=null;
+        for(let t=0;t<=32;t++){
+          const q3=[0,0,0];q3[fa]=fix;q3[ra]=lerp(ra,t/32);
+          q3[kk]=-(cc+vp[ia]*q3[ia]+vp[ib]*q3[ib])/vp[kk];
+          if(outR(q3)){prev=null;continue;}
+          const s=pr(q3);if(prev){ctx.beginPath();ctx.moveTo(prev[0],prev[1]);ctx.lineTo(s[0],s[1]);ctx.stroke();}prev=s;
+        }
+      }
+      ctx.restore();
+    });
+    drawPoints(ctx,C,i=>pr(nq(H[i])));
+    mappers[id]={space:l,kind:'3d',key:l,f:v=>pr(nq(v))};
+  }
+}
+
+// Height map: the output's z over the input plane as a 3-D surface, cut by the level plane z = 0.
+// Vertical scale: z = ±10 fills the box, so the confidence slider visibly stretches the surface; it only
+// grows (and says so on the z axis) when z gets bigger than that, e.g. after training.
+function drawHeight(C,id,folds){
+  const cv=document.getElementById(id);if(!cv)return;
+  const {ctx,w,h}=prep(cv),cam=camOf('hm'),v=S.views.hm;
+  const cy=Math.cos(v.yaw),sy=Math.sin(v.yaw),cp=Math.cos(v.pitch),sp=Math.sin(v.pitch),sc=Math.min(w,h)*0.6*cam.s;
+  const pr=q=>{const x=q[0]*cy-q[1]*sy,dd=q[0]*sy+q[1]*cy,y=q[2]*cp-dd*sp;return [w/2+cam.x*w+x*sc,h/2+cam.y*h-y*sc];};
+  const depth=q=>{const dd=q[0]*sy+q[1]*cy;return dd*cp+q[2]*sp;};
+  const N=40,st=8/N,Z=new Float32Array((N+1)*(N+1));
+  let zmax=0;for(let k=0;k<=N;k++)for(let i=0;i<=N;i++){const z=fwd([-4+i*st,-4+k*st]).s;Z[k*(N+1)+i]=z;zmax=Math.max(zmax,Math.abs(z));}
+  const ZS=2*Math.max(10,zmax*1.05),at=(x1,x2,z)=>[x1/8,x2/8,z/ZS];
+  // box
+  ctx.strokeStyle=rgba(C.muted,0.28);ctx.lineWidth=1;
+  for(const a of [-0.5,0.5])for(const b of [-0.5,0.5])
+    [[[-0.5,a,b],[0.5,a,b]],[[a,-0.5,b],[a,0.5,b]],[[a,b,-0.5],[a,b,0.5]]].forEach(([p,q])=>{const A=pr(p),B=pr(q);ctx.beginPath();ctx.moveTo(A[0],A[1]);ctx.lineTo(B[0],B[1]);ctx.stroke();});
+  // surface cells + level-plane cells, painted back to front
+  const polys=[];
+  for(let k=0;k<N;k++)for(let i=0;i<N;i++){
+    const a=k*(N+1)+i,zs=[Z[a],Z[a+1],Z[a+N+2],Z[a+N+1]],x1=-4+i*st,x2=-4+k*st;
+    const q=[at(x1,x2,zs[0]),at(x1+st,x2,zs[1]),at(x1+st,x2+st,zs[2]),at(x1,x2+st,zs[3])];
+    const zm=(zs[0]+zs[1]+zs[2]+zs[3])/4,p=sig(zm),col=rgba(p>0.5?C.cB:C.cA,0.28+0.5*Math.abs(p-0.5)*2);
+    polys.push({d:q.reduce((s2,qq)=>s2+depth(qq),0)/4,pts:q.map(pr),fill:col,edge:(i%5===0||k%5===0)});
+  }
+  const M=10;
+  for(let k=0;k<M;k++)for(let i=0;i<M;i++){
+    const u=-0.5+i/M,t=-0.5+k/M,q=[[u,t,0],[u+1/M,t,0],[u+1/M,t+1/M,0],[u,t+1/M,0]];
+    polys.push({d:q.reduce((s2,qq)=>s2+depth(qq),0)/4,pts:q.map(pr),fill:rgba(C.bound,0.16),plane:true});
+  }
+  polys.sort((a,b)=>b.d-a.d);
+  for(const P of polys){
+    ctx.beginPath();P.pts.forEach((p,n)=>n?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.closePath();
+    ctx.fillStyle=P.fill;ctx.fill();
+    if(P.plane){ctx.strokeStyle=rgba(C.bound,0.35);ctx.lineWidth=0.8;ctx.stroke();}
+    else{ctx.strokeStyle=rgba(C.plot,0.35);ctx.lineWidth=0.5;ctx.stroke();}
+  }
+  // neuron seams on the surface, and the cut z = 0 (the decision boundary) on the glass
+  const onSurf=p=>{const x1=-4+p[0]*st,x2=-4+p[1]*st;return pr(at(x1,x2,fwd([x1,x2]).s));};
+  if(S.fold){
+    const G=N,Zl=folds.map(l=>Array.from({length:S.hidden[l]},()=>new Float32Array((G+1)*(G+1))));
+    for(let k=0;k<=G;k++)for(let i=0;i<=G;i++){const r=fwd([-4+i*st,-4+k*st]);folds.forEach((l,li)=>{for(let q=0;q<S.hidden[l];q++)Zl[li][q][k*(G+1)+i]=r.zs[l][q];});}
+    folds.forEach((l,li)=>{for(let q=0;q<S.hidden[l];q++)strokeLines(ctx,contour(Zl[li][q],G),onSurf,rgba(C.ink,0.55),1.3,foldDash(l));});
+  }
+  strokeLines(ctx,contour(Z,N),p=>pr(at(-4+p[0]*st,-4+p[1]*st,0)),C.bound,2.6,[]);
+  // axes
+  ctx.font='12px '+getComputedStyle(document.body).fontFamily;ctx.fillStyle=C.muted;ctx.strokeStyle=rgba(C.muted,0.8);
+  const o=[-0.5,-0.5,-0.5],names=['x₁','x₂',`z (±${Math.round(ZS/2)})`];
+  for(let k=0;k<3;k++){const e=o.slice();e[k]=0.62;const A=pr(o),B=pr(e);ctx.beginPath();ctx.moveTo(A[0],A[1]);ctx.lineTo(B[0],B[1]);ctx.stroke();ctx.fillText(names[k],B[0]+4,B[1]-4);}
+  // Points ride on the surface; a dark rim keeps them visible against a surface of their own colour.
+  if(S.pts)for(let i=0;i<X.length;i++){const p=pr(at(X[i][0],X[i][1],fwd(X[i]).s));ctx.beginPath();ctx.arc(p[0],p[1],3.4,0,6.2832);ctx.fillStyle=Y[i]?C.cB:C.cA;ctx.fill();ctx.lineWidth=1.2;ctx.strokeStyle=rgba(C.ink,0.7);ctx.stroke();}
+  mappers[id]={space:'hm',kind:'3d',key:'hm',f:v2=>pr(at(v2[0],v2[1],v2[2]))};
+}
+// Vertical diagram: input on top, output at the bottom, so it reads in the same order as the controls above it.
+function drawNet(C){
+  const svg=$('#net'),sz=sizes(),Wd=340,left=66,rowH=80,top=26,rr=17;
+  const Hd=top*2+(sz.length-1)*rowH;
+  const ys=sz.map((_,c)=>top+c*rowH);
+  const xs=n=>{const sp=Math.min(56,(Wd-left-8)/n),cx=left+(Wd-left)/2-4;return Array.from({length:n},(_,i)=>cx+(i-(n-1)/2)*sp);};
+  let vals=null;
+  if(S.probe){const r=fwd(S.probe);vals=[S.probe,...r.hs.slice(1)];vals[vals.length-1]=[sig(r.s)];}
+  let s='';
+  for(let l=0;l<sz.length-1;l++){
+    const a=xs(sz[l]),b=xs(sz[l+1]);
+    for(let i=0;i<sz[l+1];i++)for(let j=0;j<sz[l];j++){
+      const wv=net.W[l][i][j];
+      s+=`<line x1="${a[j]}" y1="${ys[l]}" x2="${b[i]}" y2="${ys[l+1]}" stroke="${wv>=0?C.pos:C.neg}" stroke-width="${(0.5+Math.min(6,Math.abs(wv)*1.2)).toFixed(2)}" stroke-opacity="0.65" stroke-linecap="round"/>`;
+    }
+  }
+  const hi=S.tab==='out'?[0,sz.length-1]:[S.tab,S.tab+1];
+  s=`<rect x="0" y="${ys[hi[0]]-26}" width="${Wd}" height="${ys[hi[1]]-ys[hi[0]]+52}" rx="12" fill="${rgba(C.bound,0.09)}"/>`+s;
+  const actName=S.act==='none'?'no act.':S.act==='leaky'?'leaky relu':S.act;
+  const caps=[['input','x'],...S.hidden.map((_,l)=>['layer '+(l+1),actName]),['output','σ → p']];
+  for(let c=0;c<sz.length;c++){
+    const X2=xs(sz[c]),isIn=c===0,isOut=c===sz.length-1;
+    s+=`<text x="4" y="${ys[c]-2}" font-family="IBM Plex Sans, sans-serif" font-size="12.5" font-weight="500" fill="${C.ink2}">${caps[c][0]}</text>`;
+    s+=`<text x="4" y="${ys[c]+13}" font-family="IBM Plex Mono, monospace" font-size="11" fill="${C.muted}">${caps[c][1]}</text>`;
+    for(let i=0;i<sz[c];i++){
+      if(!vals){s+=`<circle cx="${X2[i]}" cy="${ys[c]}" r="${rr}" fill="${C.plot}" stroke="${C.ink}" stroke-width="1.3"/>`;continue;}
+      const v=vals[c][i];
+      const tint=isIn?C.plot:isOut?rgba(v>0.5?C.cB:C.cA,0.18+0.5*Math.abs(v-0.5)*2):rgba(v>=0?C.pos:C.neg,Math.min(0.55,Math.abs(v)*0.4));
+      s+=`<circle cx="${X2[i]}" cy="${ys[c]}" r="${rr}" fill="${C.plot}"/><circle cx="${X2[i]}" cy="${ys[c]}" r="${rr}" fill="${tint}" stroke="${C.ink}" stroke-width="1.3"/>`;
+      s+=`<text x="${X2[i]}" y="${ys[c]+3.5}" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10" fill="${C.ink}">${fmt(v)}</text>`;
+    }
+  }
+  for(let c=0;c<sz.length;c++){
+    const t=c===sz.length-1?'out':Math.max(0,c-1);
+    s+=`<rect x="0" y="${ys[c]-rowH/2}" width="${Wd}" height="${rowH}" fill="transparent" style="cursor:pointer" data-tab="${t}"><title>${c===sz.length-1?'Show input → output':'Show layer '+(t+1)}</title></rect>`;
+  }
+  svg.setAttribute('viewBox',`0 0 ${Wd} ${Hd}`);svg.innerHTML=s;
+}
+
+function actLabel(){return {none:'identity',tanh:'tanh',relu:'ReLU',leaky:'LeakyReLU',sin:'sin'}[S.act];}
+function editorHTML(l){
+  const sz=sizes(),L=sz.length-1,isOut=l===L-1,n=sz[l+1],m=sz[l],k=l+1;
+  const inName=l===0?'x':'h'+SUB[l];
+  const kind=compKind(n,m);
+  const title=isOut?`Output neuron <small>· the purple ${S.hidden[L-2]===1?'mark':S.hidden[L-2]===2?'line':'plane'}</small>`:`W${SUB[k]}, b${SUB[k]} <small>· ${n}×${m} matrix, builds the “after” space</small>`;
+  let h=`<article class="eq"><div class="eqh"><h3>${title}</h3>${isOut?'':`<button class="mini-btn" data-ident="${l}" title="W = identity, b = 0">Identity</button>`}</div>`;
+  const outName=isOut?'p':'h'+SUB[k],f=isOut?'σ':S.act==='none'?'':actLabel();
+  h+=`<p class="formula">${outName} = ${f}${f?'(':''} W${SUB[k]}·${inName} + b${SUB[k]} ${f?')':''}</p>`;
+  h+=`<div class="eqbody">`;
+  if(kind)h+=compHTML(l,kind);
+  h+=`<div><div class="eqrow${m>3?' dense':''}">`;
+  h+=`<div class="blk"><div class="br" style="grid-template-columns:repeat(${m},auto)">`;
+  for(let i=0;i<n;i++)for(let j=0;j<m;j++)h+=`<input class="cell" type="number" step="0.1" data-l="${l}" data-i="${i}" data-j="${j}" aria-label="W${k}, neuron ${i+1}, input ${j+1}">`;
+  h+=`</div><small>W${SUB[k]}</small></div>`;
+  h+=`<div class="blk"><div class="br">`;for(let i=0;i<n;i++)h+=`<input class="cell" type="number" step="0.1" data-l="${l}" data-i="${i}" data-b="1" aria-label="b${k}, neuron ${i+1}">`;h+=`</div><small>b${SUB[k]}</small></div>`;
+  h+=`</div><p class="trace" id="tr${l}"></p>`;
+  const tip=isOut?(m===2?'The angle turns the purple line. Offset slides it along that direction: it is the threshold, so no separate one is needed. Confidence sets how fast p goes from 0 to 1 across the line: it changes the loss, never the accuracy.':'These weights place the purple boundary in the space above.')+' p above 0.5 means “blue”.'
+    :kind==='affine'?'The sliders build the matrix: rotate, stretch, shear and shift the plane. Or drag any number sideways, or click to type.'
+    :kind==='line'?'One neuron projects the plane onto a direction (angle), shifts it (offset) and stretches it (scale).'
+    :'Row i = neuron i’s weights, column j = input j. Drag a number sideways to scrub it, click to type. (Transform sliders appear when a layer maps 2 → 2.)';
+  h+=`<p class="cap">${tip}</p></div></div></article>`;
+  return h;
+}
+// Slider composers. affine: W = R(θ)·[[sx, shear],[0, sy]], b = shift. line: one neuron = direction, offset, scale (called confidence on the output).
+const DEG=Math.PI/180;
+const COMP={
+  affine:{
+    formula:'W = R(θ) · [sx shear; 0 sy]<br>b = (shift x, shift y)',
+    params:[['rot','rotate','°',-180,180,1],['sx','scale x','',-3,3,0.05],['sy','scale y','',-3,3,0.05],['sh','shear','',-3,3,0.05],['tx','shift x','',-4,4,0.05],['ty','shift y','',-4,4,0.05]],
+    get(l){const W=net.W[l],sx=Math.hypot(W[0][0],W[1][0]),th=sx<1e-9?0:Math.atan2(W[1][0],W[0][0]),c=Math.cos(th),s=Math.sin(th);
+      return {rot:th/DEG,sx,sh:c*W[0][1]+s*W[1][1],sy:-s*W[0][1]+c*W[1][1],tx:net.B[l][0],ty:net.B[l][1]};},
+    set(l,p){const th=p.rot*DEG,c=Math.cos(th),s=Math.sin(th),W=net.W[l];
+      W[0][0]=c*p.sx;W[1][0]=s*p.sx;W[0][1]=c*p.sh-s*p.sy;W[1][1]=s*p.sh+c*p.sy;net.B[l][0]=p.tx;net.B[l][1]=p.ty;}
+  },
+  line:{
+    formula(l){
+      const inp=l===0?['x₁','x₂']:['h₁','h₂'],d=`d = cos θ·${inp[0]} + sin θ·${inp[1]}  <em>position along the angle</em>`;
+      if(l===net.W.length-1)return `${d}<br>p = σ( confidence · (d − offset) )<br><b>blue if d > offset</b>  <em>confidence cancels out</em>`;
+      return `${d}<br>h₁ = ${S.act==='none'?'':actLabel()+'( '}scale · (d − offset)${S.act==='none'?'':' )'}`;
+    },
+    params:[['ang','angle','°',-180,180,1],['off','offset','',-4,4,0.05],['k','*scale','',0,8,0.05]],
+    get(l){const w=net.W[l][0],k=Math.hypot(w[0],w[1]);return {ang:Math.atan2(w[1],w[0])/DEG,off:k<1e-9?0:-net.B[l][0]/k,k};},
+    set(l,p){const a=p.ang*DEG;net.W[l][0][0]=p.k*Math.cos(a);net.W[l][0][1]=p.k*Math.sin(a);net.B[l][0]=-p.k*p.off;}
+  },
+  thresh:{
+    formula(l){
+      const inp=l===0?'x₁':'h₁';
+      if(l===net.W.length-1)return `p = σ( confidence · (${inp} − threshold) )<br><b>blue if ${inp} > threshold</b>  <em>flipped if confidence < 0</em>`;
+      return `h₁ = ${S.act==='none'?'':actLabel()+'( '}scale · (${inp} − threshold)${S.act==='none'?'':' )'}`;
+    },
+    params:[['t','threshold','',-4,4,0.05],['k','*scale','',-8,8,0.05]],
+    get(l){const w=net.W[l][0][0];return {t:Math.abs(w)<1e-9?0:-net.B[l][0]/w,k:w};},
+    set(l,p){net.W[l][0][0]=p.k;net.B[l][0]=-p.k*p.t;}
+  }
+};
+const compKind=(n,m)=>n===2&&m===2?'affine':n===1&&m===2?'line':n===1&&m===1?'thresh':null;
+// Last slider values per layer, reused while W is unchanged so a decomposition never makes a slider jump mid-drag.
+const compMem={};
+const wSig=l=>JSON.stringify([net.W[l],net.B[l]]);
+function compParams(l,kind){
+  const m=compMem[l];
+  if(m&&m.kind===kind&&m.sig===wSig(l))return m.p;
+  const p=COMP[kind].get(l);compMem[l]={kind,p,sig:wSig(l)};return p;
+}
+function compHTML(l,kind){
+  const p=compParams(l,kind);
+  return `<div class="comp" data-comp="${l}" data-kind="${kind}"><p class="formula">${typeof COMP[kind].formula==='function'?COMP[kind].formula(l):COMP[kind].formula}</p>${COMP[kind].params.map(([key,lab,u,lo,hi,st])=>
+    `<label class="sl"><span>${lab==='*scale'?(l===net.W.length-1?'confidence':'scale'):lab}</span><input type="range" min="${lo}" max="${hi}" step="${st}" value="${p[key]}" data-key="${key}"><output>${fmtP(p[key],u)}</output></label>`).join('')}${kind==='affine'?'<p class="det"></p>':''}</div>`;
+}
+const fmtP=(v,u)=>u==='°'?Math.round(v)+'°':fmt(v);
+function syncComps(){
+  document.querySelectorAll('.comp').forEach(c=>{
+    const l=+c.dataset.comp,kind=c.dataset.kind,p=compParams(l,kind),u=Object.fromEntries(COMP[kind].params.map(q=>[q[0],q[2]]));
+    c.querySelectorAll('input').forEach(r=>{if(document.activeElement!==r)r.value=p[r.dataset.key];r.nextElementSibling.textContent=fmtP(p[r.dataset.key],u[r.dataset.key]);});
+    const dt=c.querySelector('.det');
+    if(dt){
+      // |det W| = how much areas are multiplied; sign < 0 = mirrored; ≈ 0 = plane squashed onto a line.
+      const W=net.W[l],det=W[0][0]*W[1][1]-W[0][1]*W[1][0],a=Math.abs(det);
+      const note=a<0.05?'plane squashed onto a line: points merge and can’t be separated later':det<0?'mirrored':Math.abs(a-1)<0.005?'area kept':a>1?'areas grow':'areas shrink';
+      dt.innerHTML=`det W = scale x · scale y = <b>${fmt(det)}</b>  <em>area ×${a.toFixed(2)} · ${note}</em>`;
+    }
+  });
+}
+let pend=null;
+function changed(l){
+  stopTrain();
+  if(pend)return;
+  pend=requestAnimationFrame(()=>{pend=null;if(S.auto&&l<net.W.length-1)fitOut();resetAdam();renderAll();});
+}
+function setWeight(l,i,j,v){
+  v=clamp(v,8);
+  if(j<0)net.B[l][i]=v;else net.W[l][i][j]=v;
+  changed(l);
+}
+function wireEditors(){
+  document.querySelectorAll('input.cell').forEach(inp=>{
+    const l=+inp.dataset.l,i=+inp.dataset.i,j=inp.dataset.b?-1:+inp.dataset.j;
+    const get=()=>j<0?net.B[l][i]:net.W[l][i][j];
+    inp.addEventListener('input',()=>{const v=parseFloat(inp.value);if(isFinite(v))setWeight(l,i,j,v);});
+    inp.addEventListener('blur',updateEqs);
+    inp.addEventListener('pointerdown',e=>{
+      if(document.activeElement===inp||e.button!==0)return;
+      e.preventDefault();
+      const sx=e.clientX,v0=get();let moved=false;
+      try{inp.setPointerCapture(e.pointerId);}catch(_){}
+      const mv=ev=>{const dx=ev.clientX-sx;if(!moved&&Math.abs(dx)<3)return;moved=true;setWeight(l,i,j,Math.round((v0+dx*0.02)*100)/100);};
+      const up=()=>{inp.removeEventListener('pointermove',mv);inp.removeEventListener('pointerup',up);inp.removeEventListener('pointercancel',up);if(!moved){inp.focus();inp.select();}};
+      inp.addEventListener('pointermove',mv);inp.addEventListener('pointerup',up);inp.addEventListener('pointercancel',up);
+    });
+  });
+  document.querySelectorAll('.comp input').forEach(r=>r.addEventListener('input',()=>{
+    const c=r.closest('.comp'),l=+c.dataset.comp,kind=c.dataset.kind,p={...compParams(l,kind),[r.dataset.key]:+r.value};
+    COMP[kind].set(l,p);compMem[l]={kind,p,sig:wSig(l)};changed(l);
+  }));
+  document.querySelectorAll('[data-ident]').forEach(b=>b.addEventListener('click',()=>{
+    const l=+b.dataset.ident;
+    net.W[l].forEach((r,i)=>r.forEach((_,j)=>{r[j]=i===j?1:0;}));net.B[l].fill(0);
+    changed(l);
+  }));
+}
+function probeText(r){
+  const L=net.W.length,vec=v=>'('+v.map(fmt).join(', ')+')';
+  for(let l=0;l<L;l++){
+    const e=document.getElementById('tr'+l);if(!e)continue;
+    const isOut=l===L-1,k=l+1,inName=l===0?'x':'h'+SUB[l];
+    e.innerHTML=r?`<span>at the probe:</span> ${inName} = ${vec(r.hs[l])} → z${SUB[k]} = ${vec(r.zs[l])} → ${isOut?'p = '+sig(r.zs[l][0]).toFixed(2):'h'+SUB[k]+' = '+vec(r.hs[l+1])}`
+      :`<span>Hover the input plane to trace any location through this layer.</span>`;
+  }
+  if(!r){$('#sel').textContent='Hover the input plane: the circles fill with the values at that location as they flow through the network.';return;}
+  const p=sig(r.s),name=p>0.5?'blue':'orange';
+  $('#sel').innerHTML=`At (${fmt(S.probe[0])}, ${fmt(S.probe[1])}) the network says <b style="color:var(--${p>0.5?'cB':'cA'})">${name}</b> (p = ${p.toFixed(2)}).`;
+}
+function updateEqs(){
+  document.querySelectorAll('input.cell').forEach(inp=>{
+    if(document.activeElement===inp)return;
+    const l=+inp.dataset.l,i=+inp.dataset.i,v=inp.dataset.b?net.B[l][i]:net.W[l][i][+inp.dataset.j];
+    inp.value=(Math.abs(v)<0.005?0:v).toFixed(2);
+  });
+  syncComps();
+}
+function updateStats(C){
+  const m=metrics();
+  $('#stE').textContent=S.epoch;$('#stL').textContent=m.loss.toFixed(3);$('#stA').textContent=m.acc+'%';
+  const {ctx,w,h}=prep($('#spark'));
+  if(S.hist.length<2)return;
+  const mx=Math.max(...S.hist),mn=Math.min(...S.hist,0);
+  ctx.strokeStyle=C.bound;ctx.lineWidth=1.8;ctx.beginPath();
+  S.hist.forEach((v,i)=>{const x=i/(S.hist.length-1)*w,y=h-2-(v-mn)/(mx-mn||1)*(h-4);if(i)ctx.lineTo(x,y);else ctx.moveTo(x,y);});
+  ctx.stroke();
+}
+
+function hiddenCaption(l){
+  const d=S.hidden[l],isLast=l===S.hidden.length-1,next=l+2;
+  if(d<=3&&S.view==='neurons')return `Each tile shows one neuron’s output over the input plane (<span style="color:var(--pos)">teal</span> positive, <span style="color:var(--neg)">red</span> negative, pale = near zero), its fold line (z = 0) dashed, and its value range underneath. Switch to Space to see the same outputs used as coordinates.`;
+  if(d>3)return `${d} neurons make a ${d}-D space, too many to draw. Each tile shows one neuron’s output over the input plane (<span style="color:var(--pos)">teal</span> positive, <span style="color:var(--neg)">red</span> negative), its fold line dashed and its value range underneath. The ${isLast?'output neuron':'next layer'} combines these tiles.`;
+  const g=S.grid&&d>1?' Faint lines are the input plane’s grid, carried through.':'';
+  const a=d===1?'One neuron, so this space is a line: each point became a single number h₁.':d===2?'Each point’s coordinates are now the two neurons’ outputs, h₁ and h₂.':'Three neurons give three axes. Drag to rotate, Shift+drag to pan, scroll to zoom.';
+  const b=isLast?(d===1?' The purple mark is the output neuron: it cuts the line at one spot.':d===2?' The purple line is the output neuron. Here it is always straight.':' The translucent purple plane is the output neuron (p = 0.5); here it is always flat. The orange/blue sheet is the input plane carried into this space, tinted by the prediction: where the plane cuts the sheet is the decision boundary.')
+    :` Purple is the network’s final boundary; dashed lines are layer ${next}’s neurons (next tab).`;
+  return a+b+g;
+}
+const dashSvg=l=>`<svg width="26" height="8" aria-hidden="true"><line x1="0" y1="4" x2="26" y2="4" stroke="var(--fold)" stroke-width="1.5" stroke-dasharray="${foldDash(l).join(' ')}" stroke-linecap="round"/></svg>`;
+function legendHTML(folds){
+  let s=`<span><i class="dot" style="background:var(--cA)"></i>orange</span><span><i class="dot" style="background:var(--cB)"></i>blue</span>`;
+  s+=`<span><svg width="26" height="8" aria-hidden="true"><line x1="0" y1="4" x2="26" y2="4" stroke="var(--bound)" stroke-width="2.6"/></svg>decision boundary</span>`;
+  if(S.fold)folds.forEach(l=>{s+=`<span>${dashSvg(l)}layer ${l+1} neuron (z = 0)</span>`;});
+  return `<div class="legend">${s}</div>`;
+}
+// A chart card for one space: 'in' = the input plane, or hidden layer l (0-based) after its activation.
+function spaceCard(id,tag,title,space,folds,cap){
+  let body;
+  const ov=`<canvas class="ov" id="${id}_ov" aria-hidden="true"></canvas>`;
+  const rb=`<button class="vreset" data-reset="${id}" hidden>⟲ Reset view</button>`;
+  if(space==='in')body=`<div class="cvwrap"><canvas class="cv cvIn" id="${id}" aria-label="Input plane"></canvas>${ov}${rb}</div>`+legendHTML(folds);
+  else if(space==='hm')body=`<div class="cvwrap"><canvas class="cv" id="${id}" data-hm="1" aria-label="Height map of the output z over the input plane"></canvas>${ov}${rb}</div>`+legendHTML(folds);
+  else{
+    const d=S.hidden[space];
+    body=asTiles(space)?`<div class="maps">${Array.from({length:d},(_,q)=>`<figure><div class="cvwrap"><canvas id="${id}_${q}" aria-label="Neuron ${q+1} of layer ${space+1} over the input plane"></canvas><canvas class="ov" id="${id}_${q}_ov" aria-hidden="true"></canvas></div><figcaption>h${SUB[q+1]} <span id="${id}_${q}_rg"></span></figcaption></figure>`).join('')}</div>`
+      :`<div class="cvwrap"><canvas class="cv" id="${id}" data-space="${space}" aria-label="Points after layer ${space+1}"></canvas>${ov}${rb}</div>`;
+  }
+  return `<div class="card"><h2><span class="tag">${tag}</span>${title}</h2>${body}<p class="cap">${cap}</p></div>`;
+}
+// What each chart slot shows on the current tab.
+function stageSpec(){
+  const n=S.hidden.length,t=S.tab;
+  if(t==='out')return {
+    A:S.inView==='height'?{space:'hm',folds:S.hidden.map((_,l)=>l),tag:'Input',title:'Height map <small>z over the input plane</small>',cap:'The surface is z, what the output neuron computes before σ. Each neuron adds a ramp (weighted by its output weight); the dashed seams are where a neuron switches, and the surface bends only there. The purple glass is the level z = 0: where it cuts the surface is the decision boundary, and everything above it is blue. The output bias lifts or lowers the whole surface; confidence stretches it vertically, which never moves the cut. Drag to rotate, Shift+drag to pan, scroll to zoom.'}
+     :{space:'in',folds:S.hidden.map((_,l)=>l),tag:'Input',title:'Whole network',cap:'The final decision boundary (purple) pulled back to the input plane, with every neuron’s fold line. Hover to probe; drag to pan, scroll to zoom.'},
+    B:{space:n-1,tag:'Output sees',title:`After layer ${n} <small>${pl(S.hidden[n-1],'neuron')}</small>`,cap:hiddenCaption(n-1)},
+    ed:n};
+  return {
+    A:t===0?{space:'in',folds:[0],tag:'Before',title:'Input plane <small>(x₁, x₂)</small>',cap:'What layer 1 receives. Dashed lines are layer 1’s neurons (z = 0): each neuron measures a signed distance from its line. Hover to probe; drag to pan, scroll to zoom.'}
+      :{space:t-1,tag:'Before',title:`After layer ${t} <small>set on the Layer ${t} tab</small>`,cap:`What layer ${t+1} receives. Dashed lines are layer ${t+1}’s neurons: here they are straight lines, and this layer folds the space along them.`},
+    B:{space:t,tag:'After',title:`Layer ${t+1} <small>${pl(S.hidden[t],'neuron')}, ${S.act==='none'?'no activation':actLabel()}</small>`,cap:hiddenCaption(t)},
+    ed:t};
+}
+function buildTabs(){
+  const n=S.hidden.length,sel=S.tab;
+  $('#tabs').innerHTML=`<button class="tab tab-net" role="tab" data-tab="out" aria-selected="${sel==='out'}" title="The whole network: input plane with the final boundary, and the output neuron">Input → Output</button><span class="vsep" aria-hidden="true"></span>`
+    +S.hidden.map((d,l)=>`<button class="tab" role="tab" data-tab="${l}" aria-selected="${sel===l}" title="Takes a ${l?d:2}-D space in, outputs a ${d}-D space (W is ${d}×${l?d:2})">Layer ${l+1}<small>${l?d:2}D → ${d}D</small></button>`).join('')
+    +(sel==='out'?`<div class="seg vsw" role="group" aria-label="How to draw the input chart"><span>Input view</span>${[['plane','Plane'],['height','Height map']].map(([v,t])=>`<button data-inview="${v}" aria-pressed="${S.inView===v}">${t}</button>`).join('')}</div>`:'')
+    +(S.width<=3?`<div class="seg vsw" role="group" aria-label="How to draw layer spaces"><span>Layer view</span>${[['space','Space'],['neurons','Per neuron']].map(([v,t])=>`<button data-view="${v}" aria-pressed="${S.view===v}">${t}</button>`).join('')}</div>`:'');
+}
+document.addEventListener('click',e=>{
+  const iv=e.target.closest('[data-inview]');if(iv){S.inView=iv.dataset.inview;rebuildDOM();renderAll();return;}
+  const b=e.target.closest('[data-view]');if(!b)return;
+  S.view=b.dataset.view;rebuildDOM();renderAll();
+});
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-tab]');if(!b)return;
+  const v=b.dataset.tab;S.tab=v==='out'?'out':+v;rebuildDOM();renderAll();
+});
+function rebuildDOM(){
+  const sp=stageSpec(),A=sp.A,B=sp.B;
+  buildTabs();
+  $('#stage').innerHTML=spaceCard('cvA',A.tag,A.title,A.space,A.folds,A.cap)+spaceCard('cvB',B.tag,B.title,B.space,B.folds,B.cap)
+    +`<div class="card edcard">${editorHTML(sp.ed)}</div>`;
+  document.querySelectorAll('#stage canvas.cv, #stage .maps canvas:not(.ov)').forEach(attachNav);
+  if(S.tab==='out')document.querySelector('#stage .card:nth-child(2)').insertAdjacentHTML('beforeend',
+    `<h3 class="striph">Output neuron’s own axis <small>z → p = σ(z)</small></h3><div class="cvwrap"><canvas class="strip" id="cvZ" aria-label="Every point placed at its output z, lifted onto the sigmoid"></canvas><canvas class="ov" id="cvZ_ov" aria-hidden="true"></canvas></div>
+     <p class="cap">Each point sits at its z (signed distance from the purple line × confidence), lifted onto σ to get p. Right of 0 means blue. Confidence stretches this axis, so points climb towards 0 or 1, but none ever crosses 0.</p>`);
+  wireEditors();
+}
+// Drag = pan (3-D: rotate; Shift- or right-drag pans), wheel = zoom at the cursor, double-click = reset.
+// On input-plane charts a mouse hover probes, and a click without dragging places the probe.
+function attachNav(cv){
+  let st=null;
+  const rel=e=>{const r=cv.getBoundingClientRect();return [e.clientX-r.left,e.clientY-r.top,r.width,r.height];};
+  const probeAt=e=>{const m=mappers[cv.id];if(m&&m.kind==='in'){const [a,b]=rel(e);S.probe=m.inv(a,b);probeLater();}};
+  cv.title='Drag to '+(cv.dataset.hm||cv.dataset.space!=null&&S.hidden[+cv.dataset.space]===3?'rotate (Shift+drag pans)':'pan')+' · scroll to zoom · double-click to reset';
+  cv.addEventListener('pointerdown',e=>{
+    const m=mappers[cv.id];if(!m)return;
+    st={x:e.clientX,y:e.clientY,moved:false,pan:m.kind!=='3d'||e.shiftKey||e.button===2};
+    try{cv.setPointerCapture(e.pointerId);}catch(_){}
+  });
+  cv.addEventListener('pointermove',e=>{
+    const m=mappers[cv.id];if(!m)return;
+    if(!st){if(e.pointerType==='mouse')probeAt(e);return;}
+    const dx=e.clientX-st.x,dy=e.clientY-st.y;
+    if(!st.moved&&Math.hypot(dx,dy)<4)return;
+    st.moved=true;st.x=e.clientX;st.y=e.clientY;cv.classList.add('dragging');
+    if(m.kind==='3d'&&!st.pan){const v=S.views[m.key];v.yaw+=dx*0.01;v.pitch=clamp(v.pitch+dy*0.01,1.3);}
+    else{
+      const c=camOf(m.key),[,,w,h]=rel(e);
+      if(m.kind==='3d'){c.x+=dx/w;c.y+=dy/h;}
+      else{const span=baseSpan(m.key)/c.s;c.x-=dx/w*span;if(m.kind!=='1d')c.y+=dy/h*span;}
+    }
+    S.probe=null;later();
+  });
+  cv.addEventListener('pointerup',e=>{if(st&&!st.moved)probeAt(e);st=null;cv.classList.remove('dragging');});
+  cv.addEventListener('pointercancel',()=>{st=null;cv.classList.remove('dragging');});
+  cv.addEventListener('pointerleave',()=>{if(!st&&S.probe){S.probe=null;probeLater();}});
+  cv.addEventListener('wheel',e=>{
+    const m=mappers[cv.id];if(!m)return;e.preventDefault();
+    const c=camOf(m.key),ns=Math.min(20,Math.max(0.1,c.s*Math.exp(-e.deltaY*0.0015)));
+    if(m.kind!=='3d'){
+      // Keep the point under the cursor fixed while the span changes.
+      const [a,b,w,h]=rel(e),span=baseSpan(m.key)/c.s,rx=a/w-0.5,ry=0.5-b/h,sp2=baseSpan(m.key)/ns;
+      c.x=c.x+rx*span-rx*sp2;if(m.kind!=='1d')c.y=c.y+ry*span-ry*sp2;
+    }
+    c.s=ns;later();
+  },{passive:false});
+  cv.addEventListener('dblclick',()=>{const m=mappers[cv.id];if(m)resetView(m.key);});
+  cv.addEventListener('contextmenu',e=>{if(mappers[cv.id]?.kind==='3d')e.preventDefault();});
+}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-reset]');if(!b)return;const m=mappers[b.dataset.reset];if(m)resetView(m.key);});
+// The output neuron as an axis rather than a line: points at their z, on the sigmoid.
+function drawStrip(C){
+  const cv=document.getElementById('cvZ');if(!cv)return;
+  const {ctx,w,h}=prep(cv),R=10,pl_=28,pr_=10,pt=10,pb=22,W=w-pl_-pr_,H=h-pt-pb;
+  const Xz=z=>pl_+(clamp(z,R)+R)/(2*R)*W,Yp=p=>pt+(1-p)*H;
+  ctx.fillStyle=rgba(C.cA,0.1);ctx.fillRect(pl_,pt,W/2,H);ctx.fillStyle=rgba(C.cB,0.1);ctx.fillRect(pl_+W/2,pt,W/2,H);
+  ctx.font='11px '+getComputedStyle(document.body).fontFamily;ctx.lineWidth=1;
+  for(const p of [0,0.5,1]){ctx.strokeStyle=rgba(C.muted,p===0.5?0.5:0.25);ctx.setLineDash(p===0.5?[2,3]:[]);ctx.beginPath();ctx.moveTo(pl_,Yp(p));ctx.lineTo(pl_+W,Yp(p));ctx.stroke();ctx.fillStyle=C.muted;ctx.fillText(p===0.5?'.5':String(p),4,Yp(p)+4);}
+  ctx.setLineDash([]);
+  for(const z of [-10,-5,0,5,10]){ctx.strokeStyle=rgba(C.muted,0.5);ctx.beginPath();ctx.moveTo(Xz(z),pt+H);ctx.lineTo(Xz(z),pt+H+4);ctx.stroke();ctx.fillStyle=C.muted;const t=z<0?'−'+(-z):String(z);ctx.fillText(t,Xz(z)-ctx.measureText(t).width/2,h-6);}
+  ctx.fillText('z',pl_+W-8,pt+H-4);ctx.fillText('p',pl_+4,pt+10);
+  ctx.strokeStyle=C.bound;ctx.setLineDash([5,4]);ctx.beginPath();ctx.moveTo(Xz(0),pt);ctx.lineTo(Xz(0),pt+H);ctx.stroke();ctx.setLineDash([]);
+  ctx.strokeStyle=C.bound;ctx.lineWidth=2;ctx.beginPath();
+  for(let i=0;i<=120;i++){const z=-R+i/120*2*R,x=Xz(z),y=Yp(sig(z));if(i)ctx.lineTo(x,y);else ctx.moveTo(x,y);}
+  ctx.stroke();
+  const zs=X.map(x=>fwd(x).s);
+  drawPoints(ctx,C,i=>[Xz(zs[i]),Yp(sig(zs[i]))],3.4,true);
+  mappers.cvZ={space:'z',f:v=>[Xz(v[0]),Yp(sig(v[0]))]};
+}
+function renderAll(){
+  const C=col(),sp=stageSpec();
+  for(const [id,x] of [['cvA',sp.A],['cvB',sp.B]])x.space==='in'?drawInput(C,id,x.folds):x.space==='hm'?drawHeight(C,id,x.folds):drawHidden(x.space,C,id);
+  if(S.tab==='out')drawStrip(C);
+  document.querySelectorAll('.vreset').forEach(b=>{const m=mappers[b.dataset.reset];b.hidden=!m||!viewMoved(m.key);});
+  updateEqs();drawProbe();updateStats(C);
+}
+
+function stopTrain(){S.training=false;$('#train').textContent='▶ Train';}
+function loop(){
+  if(!S.training)return;
+  for(let t=0;t<8;t++){adamStep(grads(0),S.lr,0);S.epoch++;}
+  S.hist.push(metrics().loss);if(S.hist.length>400)S.hist.shift();
+  renderAll();
+  if(S.epoch>=20000){stopTrain();return;}
+  requestAnimationFrame(loop);
+}
+$('#train').addEventListener('click',()=>{if(S.training){stopTrain();return;}S.training=true;$('#train').textContent='❚❚ Pause';requestAnimationFrame(loop);});
+$('#step').addEventListener('click',()=>{stopTrain();for(let t=0;t<10;t++){adamStep(grads(0),S.lr,0);S.epoch++;}S.hist.push(metrics().loss);renderAll();});
+const reinit=f=>()=>{stopTrain();f();if(S.auto)fitOut();S.epoch=0;S.hist=[];renderAll();};
+$('#rand').addEventListener('click',reinit(buildNet));
+$('#reset').addEventListener('click',reinit(cleanInit));
+$('#optBtn').addEventListener('click',e=>{const o=$('#opts');o.hidden=!o.hidden;e.currentTarget.setAttribute('aria-expanded',String(!o.hidden));});
+$('#lr').addEventListener('input',e=>{S.lr=+e.target.value;$('#lrOut').textContent=S.lr.toFixed(3);});
+$('#auto').addEventListener('change',e=>{S.auto=e.target.checked;});
+$('#pts').addEventListener('change',e=>{S.pts=e.target.checked;renderAll();});
+$('#heat').addEventListener('change',e=>{S.heat=e.target.checked;renderAll();});
+$('#grid').addEventListener('change',e=>{S.grid=e.target.checked;renderAll();});
+$('#fold').addEventListener('change',e=>{S.fold=e.target.checked;rebuildDOM();renderAll();});
+document.addEventListener('click',e=>{
+  const b=e.target.closest('.seg button');if(!b)return;
+  const g=b.parentElement,grp=g.dataset.group,v=b.dataset.v;
+  if(!grp)return;
+  g.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b?'true':'false'));
+  stopTrain();
+  if(grp==='ds')makeData(S.ds=v);
+  else if(grp==='act')S.act=v;
+  else{
+    if(grp==='layers')S.depth=+v;else S.width=+v;
+    S.hidden=new Array(S.depth).fill(S.width);cleanInit();
+    for(const k of [0,1,2]){delete S.cam[k];S.views[k]={yaw:0.7,pitch:0.45};}
+    if(S.tab!=='out'&&S.tab>=S.depth)S.tab=S.depth-1;
+  }
+  if(S.auto)fitOut();
+  resetAdam();S.epoch=0;S.hist=[];
+  rebuildDOM();renderAll();
+});
+let pq=0;function probeLater(){cancelAnimationFrame(pq);pq=requestAnimationFrame(drawProbe);}
+let rq=0;const later=()=>{cancelAnimationFrame(rq);rq=requestAnimationFrame(renderAll);};
+window.addEventListener('resize',later);
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',later);
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(later);
+
+makeData();cleanInit();rebuildDOM();renderAll();
+})();
+</script>
+</body>
+</html>
